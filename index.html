@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Depot</title>
+<meta name="description" content="Personal image collection: avatars, icons, social previews and more.">
+<style>
+  :root{--bg:#0f1117;--panel:#181b24;--line:#272b38;--text:#e8eaf0;--muted:#8b91a3;--accent:#5b9dff;
+    --check1:#2a2e3b;--check2:#222633}
+  @media (prefers-color-scheme:light){:root{--bg:#f5f6f9;--panel:#fff;--line:#dfe2ea;--text:#1a1d26;--muted:#6a7085;--accent:#2563eb;
+    --check1:#e9ebf1;--check2:#f8f9fb}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;padding:20px 24px 8px}
+  h1{margin:0;font-size:22px}
+  h1 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:8px}
+  input[type=search]{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 12px;min-width:220px;font:inherit}
+  nav{display:flex;gap:8px;flex-wrap:wrap;padding:8px 24px 16px}
+  nav button,.btn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:6px 14px;cursor:pointer;font:inherit}
+  nav button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+  nav button span{opacity:.7;margin-left:4px;font-size:12px}
+  main{padding:0 24px 40px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;text-align:left;padding:0;color:inherit;font:inherit}
+  .card:hover,.card:focus-visible{border-color:var(--accent);outline:none}
+  .thumb{aspect-ratio:1;display:grid;place-items:center;padding:10px;
+    background:conic-gradient(var(--check1) 25%,var(--check2) 0 50%,var(--check1) 0 75%,var(--check2) 0) 0 0/16px 16px}
+  .thumb img{max-width:100%;max-height:100%;object-fit:contain}
+  .meta{padding:8px 12px;border-top:1px solid var(--line)}
+  .meta b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .meta small{color:var(--muted)}
+  .empty{color:var(--muted);padding:60px 0;text-align:center}
+  dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:0;width:min(920px,94vw);max-height:92vh}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  .dlg{display:grid;grid-template-columns:1.2fr 1fr;gap:0}
+  @media(max-width:720px){.dlg{grid-template-columns:1fr}}
+  .preview{display:grid;place-items:center;padding:20px;min-height:280px;
+    background:conic-gradient(var(--check1) 25%,var(--check2) 0 50%,var(--check1) 0 75%,var(--check2) 0) 0 0/20px 20px}
+  .preview img{max-width:100%;max-height:60vh;object-fit:contain}
+  .info{padding:20px;display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:80vh}
+  .info h2{margin:0;font-size:18px;word-break:break-all}
+  .info p{margin:0;color:var(--muted);font-size:13px}
+  .row{display:flex;flex-wrap:wrap;gap:8px}
+  .btn{border-radius:8px;padding:6px 12px;font-size:13px;text-decoration:none;display:inline-block}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  h3{margin:6px 0 0;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .close{position:absolute;top:8px;right:8px;z-index:2}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:8px 16px;border-radius:8px;opacity:0;transition:.2s;pointer-events:none}
+  #toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>Image Depot <small id="count"></small></h1>
+  <input type="search" id="q" placeholder="Search images…" aria-label="Search images">
+</header>
+<nav id="tabs" aria-label="Folders"></nav>
+<main><div class="grid" id="grid"></div><div class="empty" id="empty" hidden>Nothing here yet. Drop images into this folder in the repo.</div></main>
+
+<dialog id="dlg">
+  <button class="btn close" id="x" aria-label="Close">✕</button>
+  <div class="dlg">
+    <div class="preview"><img id="pimg" alt=""></div>
+    <div class="info">
+      <h2 id="pname"></h2>
+      <p id="pmeta"></p>
+      <h3>Copy</h3>
+      <div class="row">
+        <button class="btn primary" data-copy="url">Page URL</button>
+        <button class="btn" data-copy="raw">Raw URL</button>
+        <button class="btn" data-copy="md">Markdown</button>
+        <button class="btn" data-copy="html">HTML</button>
+      </div>
+      <h3>Download</h3>
+      <div class="row"><a class="btn" id="orig" download>Original</a></div>
+      <h3>Export sized copy (PNG)</h3>
+      <div class="row">
+        <button class="btn" data-size="400x400">Avatar 400²</button>
+        <button class="btn" data-size="512x512">Icon 512²</button>
+        <button class="btn" data-size="192x192">Icon 192²</button>
+        <button class="btn" data-size="32x32">Favicon 32²</button>
+        <button class="btn" data-size="1200x630">Social 1200×630</button>
+      </div>
+      <p>Avatar/icon crops are centered squares with transparency kept. Social preview fits the image on a 1200×630 canvas.</p>
+    </div>
+  </div>
+</dialog>
+<div id="toast"></div>
+
+<script>
+const REPO = {owner:"gvnghiem", name:"image-depot", branch:"main"};
+const FOLDERS = ["all","icon","photos","misc"];
+const $ = s => document.querySelector(s);
+let items = [], tab = "all", cur = null;
+
+const base = new URL(".", location.href).href;
+const pageUrl = p => new URL(p.split("/").map(encodeURIComponent).join("/"), base).href;
+const rawUrl  = p => `https://raw.githubusercontent.com/${REPO.owner}/${REPO.name}/${REPO.branch}/${p.split("/").map(encodeURIComponent).join("/")}`;
+const kb = b => b > 1048576 ? (b/1048576).toFixed(1)+" MB" : Math.max(1,Math.round(b/1024))+" KB";
+
+fetch("manifest.json", {cache:"no-cache"}).then(r => r.json()).then(j => { items = j.items; render(); })
+  .catch(() => { $("#empty").hidden = false; $("#empty").textContent = "Could not load manifest.json (open via a web server or GitHub Pages, not file://)."; });
+
+function render(){
+  const q = $("#q").value.trim().toLowerCase();
+  $("#tabs").innerHTML = FOLDERS.map(f => {
+    const n = f==="all" ? items.length : items.filter(i=>i.folder===f).length;
+    return `<button data-tab="${f}" aria-pressed="${f===tab}">${f[0].toUpperCase()+f.slice(1)}<span>${n}</span></button>`;
+  }).join("");
+  const list = items.filter(i => (tab==="all"||i.folder===tab) && (!q || i.name.toLowerCase().includes(q)));
+  $("#count").textContent = `${items.length} image${items.length===1?"":"s"}`;
+  $("#empty").hidden = list.length > 0;
+  $("#grid").innerHTML = list.map(i => `
+    <button class="card" data-path="${i.path}">
+      <div class="thumb"><img loading="lazy" src="${i.thumb||i.path}" alt="${i.name}"></div>
+      <div class="meta"><b>${i.name}</b><small>${i.folder}${i.width?` · ${i.width}×${i.height}`:""} · ${kb(i.bytes)}</small></div>
+    </button>`).join("");
+}
+$("#q").oninput = render;
+$("#tabs").onclick = e => { const b = e.target.closest("[data-tab]"); if(b){tab=b.dataset.tab; render();} };
+$("#grid").onclick = e => {
+  const c = e.target.closest("[data-path]"); if(!c) return;
+  cur = items.find(i => i.path === c.dataset.path);
+  $("#pimg").src = cur.path; $("#pimg").alt = cur.name;
+  $("#pname").textContent = cur.path;
+  $("#pmeta").textContent = `${cur.type.toUpperCase()}${cur.width?` · ${cur.width}×${cur.height}px`:""} · ${kb(cur.bytes)}`;
+  $("#orig").href = cur.path; $("#orig").download = cur.path.split("/").pop();
+  $("#dlg").showModal();
+};
+$("#x").onclick = () => $("#dlg").close();
+$("#dlg").onclick = e => { if(e.target === $("#dlg")) $("#dlg").close(); };
+
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("on"); setTimeout(()=>el.classList.remove("on"),1500); }
+$("#dlg").addEventListener("click", async e => {
+  const c = e.target.closest("[data-copy]"), s = e.target.closest("[data-size]");
+  if(c){
+    const u = pageUrl(cur.path), r = rawUrl(cur.path);
+    const v = {url:u, raw:r, md:`![${cur.name}](${r})`, html:`<img src="${u}" alt="${cur.name}">`}[c.dataset.copy];
+    try{ await navigator.clipboard.writeText(v); toast("Copied"); }catch{ prompt("Copy:", v); }
+  }
+  if(s){
+    const [w,h] = s.dataset.size.split("x").map(Number);
+    const img = new Image(); img.src = cur.path;
+    await img.decode();
+    const cv = document.createElement("canvas"); cv.width=w; cv.height=h;
+    const ctx = cv.getContext("2d"); ctx.imageSmoothingQuality = "high";
+    const social = w !== h;
+    const k = social ? Math.min(w/img.width, h/img.height) : Math.max(w/img.width, h/img.height);
+    const dw = img.width*k, dh = img.height*k;
+    if(social){ ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,w,h); }   // social cards need an opaque background
+    ctx.drawImage(img, (w-dw)/2, (h-dh)/2, dw, dh);
+    cv.toBlob(b => { const a=document.createElement("a"); a.href=URL.createObjectURL(b);
+      a.download = `${cur.name}_${w}x${h}.png`; a.click(); toast(`Saved ${w}×${h}`); });
+  }
+});
+</script>
+</body>
+</html>

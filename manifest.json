@@ -1,0 +1,14 @@
+{
+  "items": [
+    {
+      "name": "askme_icon_v2",
+      "path": "icon/askme_icon_v2.png",
+      "folder": "icon",
+      "type": "png",
+      "bytes": 188524,
+      "width": 689,
+      "height": 591,
+      "thumb": "thumbnails/icon__askme_icon_v2.webp"
+    }
+  ]
+}

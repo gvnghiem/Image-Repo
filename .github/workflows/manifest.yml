@@ -1,0 +1,23 @@
+name: Update manifest and thumbnails
+on:
+  push:
+    branches: [main]
+    paths: ["icon/**", "photos/**", "misc/**", "scripts/**"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pillow
+      - run: python scripts/build_manifest.py
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json thumbnails
+          git diff --cached --quiet || (git commit -m "Update manifest and thumbnails" && git push)
